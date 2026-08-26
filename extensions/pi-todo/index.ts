@@ -19,10 +19,19 @@ import {
 const TODO_TOOL_NAME = "todo";
 const WIDGET_KEY = "pi-todo-widget";
 const STATE_CUSTOM_TYPE = "pi-todo-state";
-// pi-agent-desktop todo protocol: a custom message type (distinct from the
-// `todo` tool name). Emitted with the canonical TodoState as `details` so the
-// desktop panel can render it. See D:\Code\pi-agent-desktop\docs\todo-protocol.md.
-const TODO_DESKTOP_PROTOCOL_TYPE = "todo";
+
+// Desktop-owned todo widget protocol (setWidget channel): the widget key and
+// line format are defined by pi-agent-desktop
+// (D:\Code\pi-agent-desktop\lib\todo-state.ts). This extension conforms by
+// emitting the same key and JSON-per-line payload, so the desktop can route
+// the `setWidget` request straight into its sidebar todo panel.
+const TODO_WIDGET_KEY = "todo";
+
+/** Serialize a TodoState to widget lines (one task per JSON line) for the
+ * desktop todo widget protocol. Mirrors the desktop's serializer. */
+function serializeTodoWidgetLines(state: TodoState): string[] {
+  return state.tasks.map((task) => JSON.stringify(task));
+}
 
 const TodoKeySchema = Type.String({
   description:
@@ -135,8 +144,6 @@ function resolveDraftTasks(rawTasks: unknown, state: TodoState): TodoDisplayTask
 export default function todoMiniExtension(pi: ExtensionAPI): void {
   let state = createEmptyTodoState();
   let uiContext: ExtensionContext | undefined;
-  // Desktop protocol guard: only emit when the version actually changes.
-  let lastEmittedVersion = -1;
   let widgetRegistered = false;
   let widgetTui: TUI | undefined;
 
@@ -152,27 +159,23 @@ export default function todoMiniExtension(pi: ExtensionAPI): void {
 
   const updateWidget = (ctx?: ExtensionContext): void => {
     if (ctx) uiContext = ctx;
-    // pi-agent-desktop todo protocol: emit the current state whenever it
-    // changes. Runs in every mode (TUI and RPC); the TUI widget logic below is
-    // unchanged. `triggerTurn: false` persists immediately without steering the
-    // agent or starting a new turn. The desktop protocol is minimal — it only
-    // needs `tasks` — so the native state is emitted as-is, extra fields
-    // (`version`, etc.) are ignored.
-    if (state.version !== lastEmittedVersion) {
-      lastEmittedVersion = state.version;
+    // pi-agent-desktop todo widget protocol (RPC/desktop): push the live plan
+    // over `setWidget` with the desktop-reserved key. Fire-and-forget — the
+    // desktop parses the JSON lines into the sidebar panel. Cleared (undefined)
+    // when the plan is empty so the panel hides. The TUI widget path below
+    // stays separate and unchanged.
+    if (!uiContext?.hasUI) return;
+    if (uiContext.mode !== "tui") {
+      // RPC / desktop host: live todo widget over the reserved key.
       try {
-        pi.sendMessage(
-          {
-            customType: TODO_DESKTOP_PROTOCOL_TYPE,
-            content: "",
-            display: false,
-            details: state,
-          },
-          { triggerTurn: false },
+        uiContext.ui.setWidget(
+          TODO_WIDGET_KEY,
+          state.tasks.length > 0 ? serializeTodoWidgetLines(state) : undefined,
+          { placement: "aboveEditor" },
         );
       } catch {}
+      return;
     }
-    if (!uiContext?.hasUI || uiContext.mode !== "tui") return;
     if (state.tasks.length === 0) {
       clearWidget();
       return;

@@ -116,6 +116,18 @@ shows the full list (no collapse/expand): a progress header plus every task with
 a markdown-style status glyph. `in_progress` labels are bold, completed labels
 are struck through. The widget appears only while a plan exists.
 
+## Desktop integration
+
+In `rpc` mode (e.g. hosted by [pi-agent-desktop](https://github.com/.../pi-agent-desktop)),
+the plan is pushed to the host over the desktop-owned **todo widget protocol**
+(defined by pi-agent-desktop, see its `lib/todo-state.ts` and
+`docs/todo-protocol.md`): a `setWidget` request with the desktop-reserved key
+`"todo"`, one JSON `TodoTask` per line. The desktop routes it straight into its
+sidebar todo panel. It is fire-and-forget (not persisted); when the desktop
+opens a session, this extension's `session_start` restore re-emits the current
+plan, so the panel shows the latest snapshot. The TUI keeps its own component
+widget (see Rendering) and is unchanged.
+
 ## Persistence
 
 Normal writes are stored in tool-result `details`. Automatic next-turn removals
