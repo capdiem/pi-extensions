@@ -1,5 +1,5 @@
 {
-  "name": "pi-todo",
+  "name": "@capdiem/pi-todo",
   "version": "0.1.0",
   "private": true,
   "description": "A minimal atomic todo tool for the Pi coding agent: three states, snapshot updates, stale-write guard, auto-cleanup, and a simple widget",
