@@ -1,0 +1,41 @@
+{
+  "name": "@capdiem/pi-ask-user",
+  "version": "0.1.0",
+  "private": true,
+  "description": "An interactive ask_user form tool for the Pi coding agent: choice or free-text questions with recommended-answer hints, in TUI (full form) and RPC (sequential dialogs)",
+  "type": "module",
+  "scripts": {
+    "build": "bun run ../../scripts/build-package.ts"
+  },
+  "pi": {
+    "extensions": [
+      "./index.ts"
+    ]
+  },
+  "keywords": [
+    "pi-package",
+    "pi",
+    "coding-agent",
+    "ask-user",
+    "questionnaire",
+    "form",
+    "grilling"
+  ],
+  "author": "capdiem <capdiem@live.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/capdiem/pi-extensions.git",
+    "directory": "extensions/pi-ask-user"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-ai": "*",
+    "@earendil-works/pi-coding-agent": "*",
+    "@earendil-works/pi-tui": "*",
+    "typebox": "*"
+  }
+}

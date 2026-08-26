@@ -14,6 +14,16 @@
         "typescript": "^5.0.0",
       },
     },
+    "extensions/pi-ask-user": {
+      "name": "@capdiem/pi-ask-user",
+      "version": "0.1.0",
+      "peerDependencies": {
+        "@earendil-works/pi-ai": "*",
+        "@earendil-works/pi-coding-agent": "*",
+        "@earendil-works/pi-tui": "*",
+        "typebox": "*",
+      },
+    },
     "extensions/pi-todo": {
       "name": "@capdiem/pi-todo",
       "version": "0.1.0",
@@ -77,6 +87,8 @@
     "@aws/lambda-invoke-store": ["@aws/lambda-invoke-store@0.3.0", "", {}, "sha512-sl4Bm6yiMNYrZKkqqDFWN0UfnWhlS8ivKxrYl+6t0gCLrqr8y3B2IqZZbFRkfaVVp7C/baApyh71P+LeE1A2sQ=="],
 
     "@babel/runtime": ["@babel/runtime@7.29.7", "", {}, "sha512-Nq8OhGWiZIZGV6hLHoyAKLLcJihP/xFeBMGJoUrxTX2psI8dCifzLhZISFb+VWS3wFMRDmCGw5R+dOySCqPLhw=="],
+
+    "@capdiem/pi-ask-user": ["@capdiem/pi-ask-user@workspace:extensions/pi-ask-user"],
 
     "@capdiem/pi-todo": ["@capdiem/pi-todo@workspace:extensions/pi-todo"],
 

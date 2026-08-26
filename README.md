@@ -10,6 +10,7 @@ published and versioned independently.
 | Extension | npm | What it adds |
 | --- | --- | --- |
 | [Todo](extensions/pi-todo/README.md) | `pi-todo` | Atomic whole-plan updates, three statuses, auto-cleanup, and a read-only TUI widget |
+| [Ask User](extensions/pi-ask-user/README.md) | `pi-ask-user` | Interactive `ask_user` question form — choice or free-text questions with recommended-answer hints, in TUI and RPC |
 
 ## Quick start
 
@@ -19,6 +20,12 @@ Install the todo extension. Remove any other extension that owns the same
 ```bash
 pi remove <the-other-todo-extension>
 pi install npm:pi-todo
+```
+
+Install the ask-user extension (owns the `ask_user` tool name):
+
+```bash
+pi install npm:pi-ask-user
 ```
 
 Or load it directly from source during development:
@@ -59,6 +66,14 @@ dist/pi-todo/
 └── LICENSE
 ```
 
+dist/pi-ask-user/
+├── index.min.js
+├── index.min.js.map
+├── package.json
+├── README.md
+└── LICENSE
+```
+
 Root `dist/` is ignored by Git and rebuilt from release tags.
 
 ### Repository layout
@@ -66,6 +81,7 @@ Root `dist/` is ignored by Git and rebuilt from release tags.
 | Path | Contents |
 | --- | --- |
 | `extensions/pi-todo/` | The todo extension source |
+| `extensions/pi-ask-user/` | The ask-user question-form extension source |
 | `tests/` | Unit tests |
 | `scripts/` | Build, privacy, and package validation scripts |
 

@@ -6,19 +6,21 @@
   "description": "Bun workspace for independently published Pi extensions",
   "type": "module",
   "workspaces": [
-    "extensions/pi-todo"
+    "extensions/pi-todo",
+    "extensions/pi-ask-user"
   ],
   "scripts": {
     "build": "bun run build:all",
     "clean:dist": "bun run scripts/clean-build.ts",
     "build:all": "bun run clean:dist && bun run build:extensions",
-    "build:extensions": "bun run --cwd extensions/pi-todo build",
+    "build:extensions": "bun run --cwd extensions/pi-todo build && bun run --cwd extensions/pi-ask-user build",
     "test": "bun run build:all && node --import tsx --test --test-isolation=process tests/todo.test.ts",
     "lint": "tsc --noEmit",
     "check:privacy": "bun run scripts/check-test-privacy.ts",
     "check": "bun run check:privacy && bun run lint && bun run test",
     "pack:pi-todo": "bun run --cwd extensions/pi-todo build && bun pm pack --dry-run --cwd dist/pi-todo",
-    "pack:check": "bun run check && bun run pack:pi-todo"
+    "pack:pi-ask-user": "bun run --cwd extensions/pi-ask-user build && bun pm pack --dry-run --cwd dist/pi-ask-user",
+    "pack:check": "bun run check && bun run pack:pi-todo && bun run pack:pi-ask-user"
   },
   "author": "capdiem <capdiem@live.com>",
   "license": "MIT",
