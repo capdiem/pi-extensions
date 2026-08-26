@@ -1,0 +1,39 @@
+{
+  "name": "pi-todo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A minimal atomic todo tool for the Pi coding agent: three states, snapshot updates, stale-write guard, auto-cleanup, and a simple widget",
+  "type": "module",
+  "scripts": {
+    "build": "bun run ../../scripts/build-package.ts"
+  },
+  "pi": {
+    "extensions": [
+      "./index.ts"
+    ]
+  },
+  "keywords": [
+    "pi-package",
+    "pi",
+    "coding-agent",
+    "todo",
+    "task-planning"
+  ],
+  "author": "capdiem <capdiem@live.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/capdiem/pi-extensions.git",
+    "directory": "extensions/pi-todo"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-ai": "*",
+    "@earendil-works/pi-coding-agent": "*",
+    "@earendil-works/pi-tui": "*",
+    "typebox": "*"
+  }
+}

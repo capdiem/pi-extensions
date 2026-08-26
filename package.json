@@ -1,0 +1,38 @@
+{
+  "name": "pi-extensions",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "bun@1.3.14",
+  "description": "Bun workspace for independently published Pi extensions",
+  "type": "module",
+  "workspaces": [
+    "extensions/pi-todo"
+  ],
+  "scripts": {
+    "build": "bun run build:all",
+    "clean:dist": "bun run scripts/clean-build.ts",
+    "build:all": "bun run clean:dist && bun run build:extensions",
+    "build:extensions": "bun run --cwd extensions/pi-todo build",
+    "test": "bun run build:all && node --import tsx --test --test-isolation=process tests/todo.test.ts",
+    "lint": "tsc --noEmit",
+    "check:privacy": "bun run scripts/check-test-privacy.ts",
+    "check": "bun run check:privacy && bun run lint && bun run test",
+    "pack:pi-todo": "bun run --cwd extensions/pi-todo build && bun pm pack --dry-run --cwd dist/pi-todo",
+    "pack:check": "bun run check && bun run pack:pi-todo"
+  },
+  "author": "capdiem <capdiem@live.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/capdiem/pi-extensions.git"
+  },
+  "devDependencies": {
+    "@earendil-works/pi-ai": "0.83.0",
+    "@earendil-works/pi-coding-agent": "0.83.0",
+    "@earendil-works/pi-tui": "0.83.0",
+    "@types/node": "26.1.2",
+    "tsx": "latest",
+    "typebox": "1.3.7",
+    "typescript": "^5.0.0"
+  }
+}
