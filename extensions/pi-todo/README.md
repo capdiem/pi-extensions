@@ -116,9 +116,9 @@ are struck through. The widget appears only while a plan exists.
 ## Desktop integration
 
 In `rpc` mode (e.g. hosted by [pi-agent-desktop](https://github.com/.../pi-agent-desktop)),
-the plan is pushed to the host over the desktop-owned **todo widget protocol**
+the plan is pushed to the host over the desktop-owned **todo widget extension point**
 (defined by pi-agent-desktop, see its `lib/todo-state.ts` and
-`docs/todo-protocol.md`): a `setWidget` request with the desktop-reserved key
+`docs/todo-widget.md`): a `setWidget` request with the desktop-reserved key
 `"pi-agent-desktop:todo"`, one JSON `TodoTask` per line. The desktop routes it straight into its
 sidebar todo panel. It is fire-and-forget (not persisted); when the desktop
 opens a session, this extension's `session_start` restore re-emits the current

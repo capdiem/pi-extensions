@@ -76,6 +76,30 @@ dist/pi-ask-user/
 
 Root `dist/` is ignored by Git and rebuilt from release tags.
 
+### Releasing
+
+A [GitHub Actions workflow](.github/workflows/publish.yml) builds the staging
+packages and publishes them to npm. It runs on version tags (`v*`) or manually
+from the Actions tab.
+
+To publish a new release:
+
+```bash
+bun run check          # privacy + lint + tests must pass
+bun run pack:check     # verify both tarballs
+
+git tag v0.1.0
+# bump extensions/<name>/package.json version first if it has already been
+# published at that version
+
+git push origin v0.1.0
+```
+
+The workflow needs an npm token with publish access to the `@capdiem` scope,
+stored as the repository secret `NPM_TOKEN` (Settings → Secrets and variables →
+Actions). Both packages publish from their `dist/` staging directories at the
+versions declared in their `package.json`.
+
 ### Repository layout
 
 | Path | Contents |
