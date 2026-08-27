@@ -12,9 +12,6 @@ in the desktop's **left-nav sidebar** todo panel with zero extra configuration
 (desktop-side support is upcoming — see
 [Desktop integration](#desktop-integration)).
 
-A good starting point if you want to understand or extend a todo tool without
-the production hardening of a full extension.
-
 ## Features
 
 - One-call creation of a complete plan (snapshot semantics)
@@ -39,10 +36,10 @@ owns the same `todo` tool name before installing it, e.g.:
 
 ```bash
 pi remove <the-other-todo-extension>
-pi install npm:pi-todo
+pi install npm:@capdiem/pi-todo
 ```
 
-During local development:
+To try it without installing:
 
 ```bash
 pi -e ./extensions/pi-todo/index.ts

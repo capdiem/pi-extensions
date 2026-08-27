@@ -20,7 +20,11 @@ free-text field in the form.
 - **Choice and free-text** — each question is `type: "choice"` (options list,
   with an optional "Type something" free-text escape) or `type: "text"`.
 - **Question numbering (optional)** — set `numbered: true` to label questions `Q1`, `Q2`, … in the form body with an optional short title (`Q1 - Scope:`), mirroring the original grilling format. Ordinary (non-grill) forms show just the prompt.
-- **Recommended-answer hints** — each question may carry a `recommendation` (the grilling skill's `➡️ recommended answer`). When it matches one of a choice question's options, that option is marked with a **`★`** between the option number and the label (bold label), and its description (muted) plus the recommendation detail (default + bold, wrapped as `（推荐：…）`) are shown together on one line — a leading title in the recommendation is stripped (grill shape `<标题> - <详情>`, taking only the `<详情>` after the first dash). Otherwise the recommendation appears dimmed under the question as `Recommended: …`.
+- **Recommended-answer hints** — each question may carry a `recommendation`
+  (the grilling skill's `➡️ recommended answer`). When it matches one of a
+  choice question's options, that option is marked with **`★`** and the
+  recommendation shows beside it as `（推荐：…）`; otherwise it appears dimmed
+  under the question as `Recommended: …`.
 - **TUI mode** — a full-screen tabbed **Custom UI** form (↑↓ select, Tab/←→
   switch, Enter confirm, Esc cancel) via `ctx.ui.custom()`.
 - **RPC mode** — the same questions as sequential `select`/`input` dialogs over
@@ -33,10 +37,10 @@ free-text field in the form.
 ## Install
 
 ```bash
-pi install npm:pi-ask-user
+pi install npm:@capdiem/pi-ask-user
 ```
 
-Or load it directly from source during development:
+To try it without installing:
 
 ```bash
 pi -e ./extensions/pi-ask-user/index.ts
