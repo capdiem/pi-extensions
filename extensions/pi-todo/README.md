@@ -1,13 +1,19 @@
 # pi-todo
 
-A minimal, atomic todo tool for the [Pi coding agent](https://pi.dev/). The model
-writes the complete task plan in one call instead of issuing one `create` call
-per task.
+A **lightweight**, minimal, atomic todo tool for the [Pi coding agent](https://pi.dev/).
+The model writes the complete task plan in one call instead of issuing one
+`create` call per task.
 
-This is a deliberately small todo tool: it keeps the essential plan-maintenance
-core and drops dependencies, reminders, settings menus, and collapse/expand.
-It is a good starting point if you want to understand or extend a todo tool
-without the production hardening of a full extension.
+It is deliberately small — only the essential plan-maintenance core, with no
+dependencies, reminders, settings menus, or collapse/expand. The live plan
+renders as a read-only widget above Pi's input box, and when hosted by
+[pi-agent-desktop](https://github.com/abcwyc/pi-agent-desktop) it also appears
+in the desktop's **left-nav sidebar** todo panel with zero extra configuration
+(desktop-side support is upcoming — see
+[Desktop integration](#desktop-integration)).
+
+A good starting point if you want to understand or extend a todo tool without
+the production hardening of a full extension.
 
 ## Features
 
@@ -22,6 +28,9 @@ without the production hardening of a full extension.
 - State persists in tool-result details and survives `/reload` and `/tree`
 - A read-only widget above Pi's input box using markdown-style glyphs
   (`[ ]` pending, `[-]` in_progress, `[x]` completed); no collapse/expand
+- When hosted by pi-agent-desktop, the live plan also renders in the desktop's
+  **left-nav sidebar** todo panel (the desktop-owned `pi-agent-desktop:todo`
+  widget extension point) — no extra configuration needed
 
 ## Install
 
@@ -115,15 +124,25 @@ are struck through. The widget appears only while a plan exists.
 
 ## Desktop integration
 
-In `rpc` mode (e.g. hosted by [pi-agent-desktop](https://github.com/.../pi-agent-desktop)),
-the plan is pushed to the host over the desktop-owned **todo widget extension point**
-(defined by pi-agent-desktop, see its `lib/todo-state.ts` and
+When hosted by [pi-agent-desktop](https://github.com/abcwyc/pi-agent-desktop)
+(in `rpc` mode), the live plan renders in the desktop's **left-nav sidebar**
+todo panel — a persistent checkbox list next to the chat that stays in view
+while you work.
+
+The plan is pushed over the desktop-owned **todo widget extension point**
+(defined by pi-agent-desktop; see its `lib/todo-state.ts` and
 `docs/todo-widget.md`): a `setWidget` request with the desktop-reserved key
-`"pi-agent-desktop:todo"`, one JSON `TodoTask` per line. The desktop routes it straight into its
-sidebar todo panel. It is fire-and-forget (not persisted); when the desktop
-opens a session, this extension's `session_start` restore re-emits the current
-plan, so the panel shows the latest snapshot. The TUI keeps its own component
-widget (see Rendering) and is unchanged.
+`"pi-agent-desktop:todo"`, one JSON `TodoTask` per line. The desktop routes it
+straight into its sidebar todo panel. It is fire-and-forget (not persisted);
+when the desktop opens a session, this extension's `session_start` restore
+re-emits the current plan, so the panel shows the latest snapshot. The TUI
+keeps its own component widget (see Rendering) and is unchanged.
+
+> **Status: the desktop-side panel is upcoming.** The todo-panel support
+> currently lives on a feature branch in pi-agent-desktop and has not been
+> merged into a release yet. `@capdiem/pi-todo` already conforms to the
+> `pi-agent-desktop:todo` widget protocol, so once the panel ships you get the
+> sidebar rendering with **zero extra configuration**.
 
 ## Persistence
 
