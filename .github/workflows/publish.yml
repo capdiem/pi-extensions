@@ -33,16 +33,18 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          # test script uses node --test-isolation=process (needs Node 22+);
+          # must be available before "Run checks" (runner default node is older)
+          node-version: 22
+
       - name: Run checks
         run: bun run check
 
       - name: Build staging packages
         run: bun run build
-
-      - name: Setup Node (npm publisher)
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
 
       - name: Publish @capdiem/pi-todo
         working-directory: dist/pi-todo
