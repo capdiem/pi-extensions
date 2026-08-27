@@ -40,7 +40,9 @@ jobs:
           node-version: 20
 
       - name: Publish @capdiem/pi-todo
-        run: npm publish dist/pi-todo --access public --provenance
+        working-directory: dist/pi-todo
+        run: npm publish --access public --provenance
 
       - name: Publish @capdiem/pi-ask-user
-        run: npm publish dist/pi-ask-user --access public --provenance
+        working-directory: dist/pi-ask-user
+        run: npm publish --access public --provenance
