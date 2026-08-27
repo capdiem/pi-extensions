@@ -5,6 +5,11 @@ on:
     tags:
       - "v*"
   workflow_dispatch:
+    inputs:
+      dry-run:
+        description: "Validate build + publish without actually publishing to npm"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -41,8 +46,8 @@ jobs:
 
       - name: Publish @capdiem/pi-todo
         working-directory: dist/pi-todo
-        run: npm publish --access public --provenance
+        run: npm publish --access public --provenance ${{ github.event.inputs.dry-run == 'true' && '--dry-run' || '' }}
 
       - name: Publish @capdiem/pi-ask-user
         working-directory: dist/pi-ask-user
-        run: npm publish --access public --provenance
+        run: npm publish --access public --provenance ${{ github.event.inputs.dry-run == 'true' && '--dry-run' || '' }}
