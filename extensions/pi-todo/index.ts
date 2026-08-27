@@ -207,6 +207,7 @@ export default function todoMiniExtension(pi: ExtensionAPI): void {
     promptGuidelines: [
       "When a task needs a plan of 3+ steps, define it yourself and call todo before beginning implementation or other substantive work.",
       "Organize the plan by work content: a coherent objective that may span multiple turns, and a plan can hold several work contents worked across different turns. Give each work content a stable slug and prefix its todos' keys with it (e.g. auth.validate-token, auth.refresh-token) so pruning can target a whole work content.",
+      "Write task subjects in the user's language (e.g. Chinese when the user writes in Chinese). Task keys must stay lowercase ASCII slugs (a-z, 0-9, . _ -) — they are stable identities, not display text.",
       "The list is one flat ordered sequence, not grouped sections: order todos by execution/dependency order, and when work contents are related keep their todos in sequence in the same list rather than splitting them into separate blocks. The UI renders this as a single ordered list — there are no work-content groups or headers.",
       "Each todo call replaces the task list. Include every key to keep; omitted keys are deleted.",
       "Keep keys stable. Existing tasks may omit unchanged fields; new tasks require subject and status. Include baseVersion when available.",
