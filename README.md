@@ -101,14 +101,17 @@ secret is required**. Both packages publish from their `dist/` staging
 directories at the versions declared in their `package.json`.
 
 Configure a Trusted Publisher for each package once on
-[npmjs.com](https://www.npmjs.com) (account → Access → Add Publisher):
+[npmjs.com](https://www.npmjs.com) — the entry is on the **package settings
+page**, not the account menu:
 
-- **Provider:** GitHub Actions
-- **Organization or user:** `capdiem`
-- **Repository:** `pi-extensions`
-- **Workflow filename:** `publish.yml`
-- **Environment:** (leave empty)
-- **Package:** `@capdiem/pi-todo` and `@capdiem/pi-ask-user`
+1. npmjs.com → **Packages** → click `@capdiem/pi-todo` (and `@capdiem/pi-ask-user`)
+2. On the package page → **Settings** tab → **Trusted publishing** section → Add Publisher
+3. Choose **GitHub Actions** and fill in:
+   - **Organization or user:** `capdiem`
+   - **Repository:** `pi-extensions`
+   - **Workflow filename:** `publish.yml`
+   - **Environment name:** (leave empty)
+   - **Allowed actions:** `npm publish`
 
 ### Repository layout
 
