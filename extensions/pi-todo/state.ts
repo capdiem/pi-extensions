@@ -137,19 +137,6 @@ export function writeTodo(state: TodoState, input: TodoSnapshotInput): TodoState
   };
 }
 
-/**
- * Remove completed tasks that are no longer needed. Without dependencies, every
- * completed task can be dropped once the turn that completed it is over. Returns
- * undefined when there is nothing to remove.
- */
-export function removeCompletedTasks(state: TodoState): TodoState | undefined {
-  if (!state.tasks.some((task) => task.status === "completed")) return undefined;
-  return writeTodo(state, {
-    tasks: state.tasks.filter((task) => task.status !== "completed"),
-    baseVersion: state.version,
-  });
-}
-
 export function isValidTodoState(value: unknown): value is TodoState {
   if (!value || typeof value !== "object") return false;
   const candidate = value as { version?: unknown; tasks?: unknown };
@@ -193,7 +180,8 @@ export function isValidTodoState(value: unknown): value is TodoState {
 
 /**
  * Reconstruct the current state by replaying the branch. The latest valid tool
- * result (or hidden cleanup message) for the `todo` tool wins.
+ * result (or a legacy hidden custom-message snapshot from an older version
+ * that auto-removed completed tasks) for the `todo` tool wins.
  */
 export function replayTodoState(
   ctx: { sessionManager: { getBranch(): Iterable<unknown> } },

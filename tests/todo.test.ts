@@ -5,7 +5,6 @@ import {
   createEmptyTodoState,
   formatChange,
   isValidTodoState,
-  removeCompletedTasks,
   replayTodoState,
   type TodoState,
   type TodoTaskInput,
@@ -114,23 +113,6 @@ test("todo clears the plan with an empty list", () => {
   assert.deepEqual(cleared.tasks, []);
 });
 
-test("todo auto-removes all completed tasks and bumps the version", () => {
-  const current = writeTodo(createEmptyTodoState(), {
-    tasks: [
-      { key: "step-a", subject: "Step A", status: "completed" },
-      { key: "step-b", subject: "Step B", status: "in_progress" },
-    ],
-  });
-  const before = cloneTodoState(current);
-  const removed = removeCompletedTasks(before);
-  assert.ok(removed);
-  assert.equal(removed.version, 2);
-  assert.deepEqual(removed.tasks.map((task) => task.key), ["step-b"]);
-  assert.deepEqual(before, cloneTodoState(current), "automatic removal must not mutate its input state");
-
-  assert.equal(removeCompletedTasks(removed), undefined, "nothing to remove returns undefined");
-});
-
 test("todo replay restores the latest valid tool result", () => {
   const first = writeTodo(createEmptyTodoState(), { tasks: initialPlan });
   const replayed = replayTodoState(
@@ -179,7 +161,7 @@ test("todo replay ignores malformed state and picks the last valid snapshot", ()
   assert.deepEqual(replayed.tasks.map((task) => task.key), ["valid"], "malformed later snapshot must be ignored");
 });
 
-test("todo replay picks up hidden cleanup checkpoints", () => {
+test("todo replay picks up custom-type checkpoints for legacy sessions", () => {
   const afterCleanup = writeTodo(createEmptyTodoState(), {
     tasks: [{ key: "remaining", subject: "Remaining work", status: "in_progress" }],
   });

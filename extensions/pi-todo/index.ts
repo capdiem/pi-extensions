@@ -8,7 +8,6 @@ import {
   formatChange,
   isTodoStatus,
   isValidTodoState,
-  removeCompletedTasks,
   replayTodoState,
   writeTodo,
   type TodoState,
@@ -171,7 +170,6 @@ export default function todoMiniExtension(pi: ExtensionAPI): void {
         uiContext.ui.setWidget(
           TODO_WIDGET_KEY,
           state.tasks.length > 0 ? serializeTodoWidgetLines(state) : undefined,
-          { placement: "aboveEditor" },
         );
       } catch {}
       return;
@@ -208,10 +206,13 @@ export default function todoMiniExtension(pi: ExtensionAPI): void {
     promptSnippet: "Maintain the task plan with one atomic update",
     promptGuidelines: [
       "When a task needs a plan of 3+ steps, define it yourself and call todo before beginning implementation or other substantive work.",
+      "Organize the plan by work content: a coherent objective that may span multiple turns, and a plan can hold several work contents worked across different turns. Give each work content a stable slug and prefix its todos' keys with it (e.g. auth.validate-token, auth.refresh-token) so pruning can target a whole work content.",
+      "The list is one flat ordered sequence, not grouped sections: order todos by execution/dependency order, and when work contents are related keep their todos in sequence in the same list rather than splitting them into separate blocks. The UI renders this as a single ordered list — there are no work-content groups or headers.",
       "Each todo call replaces the task list. Include every key to keep; omitted keys are deleted.",
       "Keep keys stable. Existing tasks may omit unchanged fields; new tasks require subject and status. Include baseVersion when available.",
       "Only one task may be in_progress at a time.",
-      "Mark work completed only after implementation and verification succeed. Completed tasks are removed next turn.",
+      "Completed todos are never auto-removed. Keep them struck through as history while their work content is still open.",
+      "Prune completed todos only when their whole work content is complete: once every todo under a work content is done, remove all of that content's todos together in the next todo call. Work contents are pruned independently — a completed work content is removed even when other work contents remain open. Turn boundaries are not cleanup points.",
       "While a todo plan exists, update todo immediately when task status, order, or scope changes, and reconcile actual progress before the final response. Do not issue a no-op todo call only to acknowledge a reminder.",
     ],
     parameters: TodoParamsSchema,
@@ -277,21 +278,6 @@ export default function todoMiniExtension(pi: ExtensionAPI): void {
 
   pi.on("session_start", async (_event, ctx) => restore(ctx));
   pi.on("session_tree", async (_event, ctx) => restore(ctx));
-
-  pi.on("before_agent_start", async () => {
-    const removed = removeCompletedTasks(state);
-    if (!removed) return;
-    state = removed;
-    updateWidget();
-    return {
-      message: {
-        customType: STATE_CUSTOM_TYPE,
-        content: formatChange(removed),
-        display: false,
-        details: removed,
-      },
-    };
-  });
 
   pi.on("session_shutdown", async () => {
     clearWidget();

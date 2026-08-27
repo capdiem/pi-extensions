@@ -17,8 +17,8 @@ without the production hardening of a full extension.
 - `baseVersion` stale-write guard against concurrent/out-of-order updates
 - At most one `in_progress` task at a time
 - Atomic validation — a failed write never mutates state
-- Auto-removal of completed tasks at the start of the next turn, with a hidden
-  checkpoint message so the model never works from stale history
+- Completed todos are never auto-removed; the model prunes them (by omitting
+  their keys) once their whole work content is complete
 - State persists in tool-result details and survives `/reload` and `/tree`
 - A read-only widget above Pi's input box using markdown-style glyphs
   (`[ ]` pending, `[-]` in_progress, `[x]` completed); no collapse/expand
@@ -96,18 +96,15 @@ archived record.
 - New keys require `subject` and `status`.
 - Every key present in `tasks` remains in the plan; omitted current keys are
   permanently deleted.
-- Completed tasks remain visible for the current turn, then are automatically
-  removed at the start of the next turn.
+- Completed tasks remain visible (struck through) until the model prunes them
+  by omitting their keys once their whole work content is complete.
 - `tasks: []` clears the plan.
 - `baseVersion`, when provided, rejects stale writes.
 - At most one task may be `in_progress` at a time.
 - Validation is all-or-nothing; failed writes do not mutate state.
 - A write that leaves the plan unchanged does not bump the version.
 
-Each successful result includes the current version and complete plan. When
-next-turn cleanup changes the plan, the extension emits one hidden custom
-message containing the new version and snapshot so the model never works from
-stale tool history.
+Each successful result includes the current version and complete plan.
 
 ## Rendering
 
@@ -130,11 +127,11 @@ widget (see Rendering) and is unchanged.
 
 ## Persistence
 
-Normal writes are stored in tool-result `details`. Automatic next-turn removals
-are stored in hidden custom-message `details`; the same message also tells the
-model which snapshot and version are current. On `session_start` and `/tree`
+Writes are stored in tool-result `details`. On `session_start` and `/tree`
 navigation, the extension restores the latest valid state entry from the active
-branch.
+branch. (For backwards compatibility it also recognizes legacy hidden
+custom-message snapshots emitted by older versions that auto-removed completed
+tasks.)
 
 This minimal extension does **not** handle compaction checkpoints: if compaction
 drops every `todo` tool result from the branch, the plan resets to empty (the
