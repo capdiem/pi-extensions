@@ -36,9 +36,10 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          # test script uses node --test-isolation=process (needs Node 22+);
-          # must be available before "Run checks" (runner default node is older)
-          node-version: 22
+          # test script uses node --test-isolation=process (Node 24+; runner
+          # default node 20 and Node 22 do not support it). Must run before
+          # "Run checks" so the test step picks it up.
+          node-version: 24
 
       - name: Run checks
         run: bun run check
