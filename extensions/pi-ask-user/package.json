@@ -1,6 +1,6 @@
 {
   "name": "@capdiem/pi-ask-user",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "An interactive ask_user form tool for the Pi coding agent: choice or free-text questions with recommended-answer hints, in TUI (full form) and RPC (sequential dialogs)",
   "type": "module",
