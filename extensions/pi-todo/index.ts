@@ -24,7 +24,7 @@ const STATE_CUSTOM_TYPE = "pi-todo-state";
 // (D:\Code\pi-agent-desktop\lib\todo-state.ts). This extension conforms by
 // emitting the same key and JSON-per-line payload, so the desktop can route
 // the `setWidget` request straight into its sidebar todo panel.
-const TODO_WIDGET_KEY = "todo";
+const TODO_WIDGET_KEY = "pi-agent-desktop:todo";
 
 /** Serialize a TodoState to widget lines (one task per JSON line) for the
  * desktop todo widget protocol. Mirrors the desktop's serializer. */
