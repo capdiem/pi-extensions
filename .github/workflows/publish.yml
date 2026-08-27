@@ -8,8 +8,8 @@ on:
 
 permissions:
   contents: read
-  # Needed for npm provenance (signs each publish with the GitHub OIDC
-  # identity so the pi gallery can verify the package came from this repo).
+  # Required for npm Trusted Publishing and provenance: npm authenticates this
+  # workflow via GitHub OIDC, so no NPM_TOKEN secret is needed.
   id-token: write
 
 jobs:
@@ -34,19 +34,13 @@ jobs:
       - name: Build staging packages
         run: bun run build
 
-      - name: Configure npm authentication
+      - name: Setup Node (npm publisher)
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          registry-url: https://registry.npmjs.org/
-          scope: "@capdiem"
 
       - name: Publish @capdiem/pi-todo
         run: npm publish dist/pi-todo --access public --provenance
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish @capdiem/pi-ask-user
         run: npm publish dist/pi-ask-user --access public --provenance
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

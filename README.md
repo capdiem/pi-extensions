@@ -95,10 +95,20 @@ git tag v0.1.0
 git push origin v0.1.0
 ```
 
-The workflow needs an npm token with publish access to the `@capdiem` scope,
-stored as the repository secret `NPM_TOKEN` (Settings → Secrets and variables →
-Actions). Both packages publish from their `dist/` staging directories at the
-versions declared in their `package.json`.
+Publishing uses npm **Trusted Publishing**: the workflow authenticates to npm
+through GitHub OIDC and signs each package with provenance, so **no npm token
+secret is required**. Both packages publish from their `dist/` staging
+directories at the versions declared in their `package.json`.
+
+Configure a Trusted Publisher for each package once on
+[npmjs.com](https://www.npmjs.com) (account → Access → Add Publisher):
+
+- **Provider:** GitHub Actions
+- **Organization or user:** `capdiem`
+- **Repository:** `pi-extensions`
+- **Workflow filename:** `publish.yml`
+- **Environment:** (leave empty)
+- **Package:** `@capdiem/pi-todo` and `@capdiem/pi-ask-user`
 
 ### Repository layout
 
