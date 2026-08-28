@@ -27,6 +27,12 @@ assert.ok(
     seen.events.includes("message_end"),
   `expected stream events, got: ${seen.events.join(", ")}`,
 );
+assert.ok(
+  seen.events.includes("tool_call") &&
+    seen.events.includes("agent_start") &&
+    seen.events.includes("agent_end"),
+  `expected tool-loop events, got: ${seen.events.join(", ")}`,
+);
 assert.ok(seen.commands.includes("runaway"), `expected /runaway command, got: ${seen.commands.join(", ")}`);
 
 console.log(`SMOKE OK — events: ${seen.events.join(", ")}; commands: ${seen.commands.join(", ")}`);

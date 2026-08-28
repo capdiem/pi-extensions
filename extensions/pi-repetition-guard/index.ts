@@ -2,34 +2,38 @@ import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-a
 import {
   GUARD_STEER_MAX_RETRIES,
   RepetitionDetector,
+  RetryBudget,
+  ToolLoopTracker,
   buildSteer,
+  buildToolLoopSteer,
   extractText,
 } from "./detector.ts";
 
 /**
  * pi-repetition-guard — a repetition-loop guard for the Pi coding agent.
  *
- * Detects thinking-runaway / 万字复读 (the model repeating the same text in a
- * loop during long thinking or output) by observing `message_update` stream
- * events, then aborts the generation and re-steers the model with a corrective
- * steer message (ADR 0002: active abort, beyond ADR 0001's ask_user scope).
+ * Detects two distinct runaway failure modes and intervenes with
+ * abort/re-steer (ADR 0002: active intervention, beyond ADR 0001's ask_user
+ * scope):
  *
- * Design (settled in grilling, see docs/adr/0002):
- * - Hybrid detection: block-repeat primary + n-gram shingle novelty confirmatory.
- * - Two-stage trigger: stage-1 "suspect" is record-only; stage-2 "hard" aborts.
- * - Intervention pipeline: ctx.abort() in message_update, then send the steer
- *   from message_end (race-free: the aborted message is finalized by then).
- * - Retry budget: max 2 steer retries per logical user turn, escalated wording
- *   on the 2nd, then give up (abort without steer).
- * - Control: `/runaway on|off` slash command, default on.
+ * 1. Text repetition loop (thinking-runaway / 万字复读): the model repeats the
+ *    same text contiguously during long thinking or output. Detected via tail
+ *    periodicity on `message_update`; intervened with ctx.abort() + steer.
+ * 2. Tool-call loop: the model repeatedly invokes the SAME tool with the SAME
+ *    input and never settles (e.g. checking git status over and over). Detected
+ *    on `tool_call`; intervened by blocking the repetitive call (block +
+ *    terminate) and steering.
+ *
+ * Shared control: `/runaway on|off` (user-only), retry budget of 3 steers per
+ * logical user turn (escalated wording 1→2→3, then give up).
  */
 export default function repetitionGuardExtension(pi: ExtensionAPI): void {
   const detector = new RepetitionDetector();
+  const toolLoopTracker = new ToolLoopTracker();
+  const budget = new RetryBudget(GUARD_STEER_MAX_RETRIES);
   let enabled = true;
-  let steerBudget = GUARD_STEER_MAX_RETRIES;
   let pendingSteer: string | undefined;
-  let steerInFlight = false;
-  let suspectLogged = false;
+  let pendingToolSteer: string | undefined;
   let hardTriggered = false;
 
   const diag = (message: string): void => {
@@ -37,36 +41,36 @@ export default function repetitionGuardExtension(pi: ExtensionAPI): void {
   };
 
   const onHardTrigger = (ctx: ExtensionContext, sample: string): void => {
-    steerBudget -= 1;
-    const retryNum = GUARD_STEER_MAX_RETRIES - steerBudget; // 1-based: 1 or 2
-    if (steerBudget >= 0) {
+    const { retryNum, allowSteer } = budget.consume();
+    if (allowSteer) {
       pendingSteer = buildSteer(retryNum, sample);
-      diag(`hard trigger — aborting, will steer (retry ${retryNum}/${GUARD_STEER_MAX_RETRIES})`);
+      diag(`text runaway — aborting, will steer (retry ${retryNum}/${GUARD_STEER_MAX_RETRIES})`);
     } else {
-      diag("hard trigger — aborting, retry budget exhausted (giving up)");
+      diag("text runaway — aborting, retry budget exhausted (giving up)");
     }
     ctx.abort();
   };
 
-  // Track per-message state and the retry budget across logical user turns.
+  /** Track per-message state and the retry budget across logical turns. */
   pi.on("message_start", (event) => {
     const role = event.message?.role;
     if (role === "assistant") {
       detector.reset();
-      suspectLogged = false;
       hardTriggered = false;
     } else if (role === "user") {
-      if (steerInFlight) {
-        steerInFlight = false; // our own steer — keep the budget
-      } else {
-        steerBudget = GUARD_STEER_MAX_RETRIES; // real user message — new turn
+      const text = contentText(event.message.content);
+      if (budget.onUserMessage(text)) {
         diag(`new user turn — budget reset to ${GUARD_STEER_MAX_RETRIES}`);
       }
     }
   });
 
-  // The one real-time observation point: stream updates with the accumulated
-  // full message snapshot (thinking + final text).
+  pi.on("agent_start", () => {
+    toolLoopTracker.reset();
+  });
+
+  // Text runaway detection: the one real-time observation point, stream
+  // updates with the accumulated full message snapshot (thinking + final text).
   pi.on("message_update", (event, ctx) => {
     if (!enabled || hardTriggered) return;
     if (event.message.role !== "assistant") return;
@@ -74,21 +78,51 @@ export default function repetitionGuardExtension(pi: ExtensionAPI): void {
     if (result.hard) {
       hardTriggered = true;
       onHardTrigger(ctx, result.sample);
-    } else if (result.suspect && !suspectLogged) {
-      suspectLogged = true;
-      diag("suspect (stage-1): possible repetition loop, recording only");
     }
   });
 
-  // Send the steer once the aborted message is finalized (avoids racing the
-  // abort; message_end replacement is not used — ADR 0002, no cleanup).
+  // Tool-call-loop detection: same tool + same input repeated in a window.
+  // Block the repetitive call and queue a tool-loop steer.
+  pi.on("tool_call", (event) => {
+    if (!enabled) return;
+    const inputKey = normalizeInput(event.input);
+    const isLoop = toolLoopTracker.record(event.toolName, inputKey);
+    if (!isLoop) return;
+    const { retryNum, allowSteer } = budget.consume();
+    if (allowSteer) {
+      pendingToolSteer = buildToolLoopSteer(retryNum, event.toolName, inputKey);
+      diag(
+        `tool-call loop — blocking ${event.toolName} (${inputKey.slice(0, 60)}), will steer ` +
+          `(retry ${retryNum}/${GUARD_STEER_MAX_RETRIES})`,
+      );
+    } else {
+      diag("tool-call loop — budget exhausted, blocking without steer");
+    }
+    return {
+      block: true,
+      reason: "Repetition guard: tool-call loop (same tool+args repeated)",
+      terminate: true,
+    };
+  });
+
+  // Send the text steer once the aborted message is finalized (race-free).
   pi.on("message_end", (event) => {
     if (!pendingSteer) return;
     if (event.message.role !== "assistant") return;
     const steer = pendingSteer;
     pendingSteer = undefined;
-    steerInFlight = true;
-    diag("sending steer retry");
+    budget.recordSentSteer(steer);
+    diag("sending text steer retry");
+    pi.sendUserMessage(steer, { deliverAs: "steer" });
+  });
+
+  // Send the tool-loop steer after the (terminated) run settles.
+  pi.on("agent_end", () => {
+    if (!pendingToolSteer) return;
+    const steer = pendingToolSteer;
+    pendingToolSteer = undefined;
+    budget.recordSentSteer(steer);
+    diag("sending tool-loop steer retry");
     pi.sendUserMessage(steer, { deliverAs: "steer" });
   });
 
@@ -108,4 +142,41 @@ export default function repetitionGuardExtension(pi: ExtensionAPI): void {
       }
     },
   });
+}
+
+/** Stable, order-insensitive string key for a tool input. */
+function normalizeInput(input: unknown): string {
+  if (input === undefined || input === null) return "";
+  if (typeof input === "string") return input;
+  try {
+    return stableStringify(input);
+  } catch {
+    return String(input);
+  }
+}
+
+/** Concatenate the text of a user message, for matching against our steers. */
+function contentText(content: unknown): string {
+  if (!Array.isArray(content)) return "";
+  let text = "";
+  for (const item of content) {
+    if (item && typeof item === "object") {
+      const t = (item as { text?: unknown }).text;
+      if (typeof t === "string") text += t;
+    }
+  }
+  return text;
+}
+
+function stableStringify(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map(stableStringify).join(",")}]`;
+  }
+  if (value && typeof value === "object") {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+      .map(([k, v]) => `${JSON.stringify(k)}:${stableStringify(v)}`);
+    return `{${entries.join(",")}}`;
+  }
+  return JSON.stringify(value);
 }
