@@ -54,3 +54,7 @@ jobs:
       - name: Publish @capdiem/pi-ask-user
         working-directory: dist/pi-ask-user
         run: npm publish --access public --provenance ${{ github.event.inputs.dry-run == 'true' && '--dry-run' || '' }}
+
+      - name: Publish @capdiem/pi-repetition-guard
+        working-directory: dist/pi-repetition-guard
+        run: npm publish --access public --provenance ${{ github.event.inputs.dry-run == 'true' && '--dry-run' || '' }}
