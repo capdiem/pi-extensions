@@ -16,7 +16,17 @@
     },
     "extensions/pi-ask-user": {
       "name": "@capdiem/pi-ask-user",
-      "version": "0.1.0",
+      "version": "0.2.0",
+      "peerDependencies": {
+        "@earendil-works/pi-ai": "*",
+        "@earendil-works/pi-coding-agent": "*",
+        "@earendil-works/pi-tui": "*",
+        "typebox": "*",
+      },
+    },
+    "extensions/pi-repetition-guard": {
+      "name": "@capdiem/pi-repetition-guard",
+      "version": "0.2.0",
       "peerDependencies": {
         "@earendil-works/pi-ai": "*",
         "@earendil-works/pi-coding-agent": "*",
@@ -26,7 +36,7 @@
     },
     "extensions/pi-todo": {
       "name": "@capdiem/pi-todo",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "peerDependencies": {
         "@earendil-works/pi-ai": "*",
         "@earendil-works/pi-coding-agent": "*",
@@ -89,6 +99,8 @@
     "@babel/runtime": ["@babel/runtime@7.29.7", "", {}, "sha512-Nq8OhGWiZIZGV6hLHoyAKLLcJihP/xFeBMGJoUrxTX2psI8dCifzLhZISFb+VWS3wFMRDmCGw5R+dOySCqPLhw=="],
 
     "@capdiem/pi-ask-user": ["@capdiem/pi-ask-user@workspace:extensions/pi-ask-user"],
+
+    "@capdiem/pi-repetition-guard": ["@capdiem/pi-repetition-guard@workspace:extensions/pi-repetition-guard"],
 
     "@capdiem/pi-todo": ["@capdiem/pi-todo@workspace:extensions/pi-todo"],
 
