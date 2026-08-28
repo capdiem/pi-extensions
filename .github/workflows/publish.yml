@@ -47,14 +47,30 @@ jobs:
       - name: Build staging packages
         run: bun run build
 
+      # Gate: validate every package is packable BEFORE anything publishes.
+      # Note: --dry-run only verifies pack contents, NOT npm-side Trusted
+      # Publishing acceptance (that happens at upload time). To avoid a
+      # half-publish when one package's OIDC auth fails, the NEW/unproven
+      # package (pi-repetition-guard) publishes FIRST below — if it fails,
+      # nothing else has been published yet.
+      - name: Validate publish (dry-run) — all packages
+        run: |
+          for pkg in pi-todo pi-ask-user pi-repetition-guard; do
+            echo "::group::validate $pkg"
+            (cd "dist/$pkg" && npm publish --access public --provenance --dry-run)
+            echo "::endgroup::"
+          done
+
+      # Publish the new/unproven package first so an auth/config failure stops
+      # the run before the stable packages are published.
+      - name: Publish @capdiem/pi-repetition-guard
+        working-directory: dist/pi-repetition-guard
+        run: npm publish --access public --provenance ${{ github.event.inputs.dry-run == 'true' && '--dry-run' || '' }}
+
       - name: Publish @capdiem/pi-todo
         working-directory: dist/pi-todo
         run: npm publish --access public --provenance ${{ github.event.inputs.dry-run == 'true' && '--dry-run' || '' }}
 
       - name: Publish @capdiem/pi-ask-user
         working-directory: dist/pi-ask-user
-        run: npm publish --access public --provenance ${{ github.event.inputs.dry-run == 'true' && '--dry-run' || '' }}
-
-      - name: Publish @capdiem/pi-repetition-guard
-        working-directory: dist/pi-repetition-guard
         run: npm publish --access public --provenance ${{ github.event.inputs.dry-run == 'true' && '--dry-run' || '' }}
