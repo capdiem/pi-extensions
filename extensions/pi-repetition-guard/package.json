@@ -1,0 +1,44 @@
+{
+  "name": "@capdiem/pi-repetition-guard",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A repetition-loop guard for the Pi coding agent: detects thinking-runaway / 万字复读 (the model repeating the same text in a loop) in streamed output via message_update, then aborts and re-steers the model with a corrective steer message",
+  "type": "module",
+  "scripts": {
+    "build": "bun run ../../scripts/build-package.ts"
+  },
+  "pi": {
+    "extensions": [
+      "./index.ts"
+    ]
+  },
+  "keywords": [
+    "pi-package",
+    "pi",
+    "coding-agent",
+    "repetition",
+    "repetition-loop",
+    "thinking-runaway",
+    "runaway",
+    "guard",
+    "abort",
+    "steer"
+  ],
+  "author": "capdiem <capdiem@live.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/capdiem/pi-extensions.git",
+    "directory": "extensions/pi-repetition-guard"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-ai": "*",
+    "@earendil-works/pi-coding-agent": "*",
+    "@earendil-works/pi-tui": "*",
+    "typebox": "*"
+  }
+}
