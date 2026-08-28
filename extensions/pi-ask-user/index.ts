@@ -27,6 +27,7 @@ import {
   wrapTextWithAnsi,
 } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
+import { assistantText, classifyTurn } from "./diagnostic.ts";
 
 // ---------- Types ----------
 
@@ -654,16 +655,20 @@ export default function askUserExtension(pi: ExtensionAPI): void {
     label: "Ask User",
     description:
       "Ask the user one or more questions as an interactive form (choice options or free-text). " +
-      "Use when you need the user's decision, preference, or input to continue — especially to " +
-      "present a round of design/planning questions with your recommended answer for each. " +
+      "Use it whenever you need the user's decision, preference, or input to continue. " +
+      "In grilling, domain-modeling, or design-interview workflows that present question rounds " +
+      "as numbered plain-text blocks (Q1..QN, ❓, 'recommended answer'), you MUST call ask_user " +
+      "to present those questions as a form instead of typing them out. " +
       "Each question may include a 'recommendation'; when it matches one of the options, that option is highlighted.",
-    promptSnippet: "Ask the user questions through an interactive form",
+    promptSnippet:
+      "Present user questions as an interactive form (mandatory for grilling/design question rounds)",
     promptGuidelines: [
-      "Use ask_user to put questions to the user as an interactive form instead of printing plain-text Q1..QN blocks.",
+      "In grilling, domain-modeling, or any design-interview workflow (e.g. the grilling / grill-with-docs / domain-modeling skills) that presents question rounds as numbered plain-text blocks (Q1..QN, ❓, 'recommended answer'), you MUST call ask_user to present each round as an interactive form — do not write the questions out as plain text.",
+      "Use ask_user whenever you need the user's decision, preference, or free-text input to continue a task, instead of typing the questions inline.",
       "When a single turn has multiple related questions (e.g. a grilling round's frontier), pass them all in one ask_user call — one question per entry, with type 'choice' or 'text'.",
-      "For each question you can include a 'recommendation' with your recommended answer. When it matches an option's value or label, that option is highlighted in the form; otherwise it is shown as a hint under the question.",
+      "For each ask_user question you can include a 'recommendation' with your recommended answer. When it matches one of the options, that option is highlighted; otherwise it is shown as a hint under the question.",
       "For grilling-style rounds set numbered: true so the questions are prefixed Q1/Q2. For ordinary questions omit it — the form then shows just the prompt (plus an optional title).",
-      "ask_user works in TUI mode (full form) and RPC mode (sequential dialogs). In print/json mode it returns the questions as text so you can ask them in plain text.",
+      "ask_user works in TUI mode (full form) and RPC mode (sequential dialogs). In print/json mode it returns the questions as text, so reserve it for interactive sessions where a form can render.",
       "If ask_user reports 'cancelled', stop and let the user redirect instead of re-asking the same questions.",
     ],
     parameters: AskUserParams,
@@ -768,5 +773,39 @@ export default function askUserExtension(pi: ExtensionAPI): void {
       text.setText(lines.join("\n"));
       return text;
     },
+  });
+
+  // ---- Lightweight per-turn diagnostic (ADR-0001 escalation gate) ----
+  // With --ask-user-debug, records each turn whether a "question round" happened
+  // and whether it used ask_user, so the escalation gate has evidence on whether
+  // pure tool metadata is enough to make grilling/design rounds use the form.
+  let usedAskUserThisTurn = false;
+
+  pi.registerFlag("ask-user-debug", {
+    description: "Log per-turn question-round diagnostics for ask_user triggering",
+    type: "boolean",
+    default: false,
+  });
+
+  const askUserDebug = (): boolean => pi.getFlag("ask-user-debug") === true;
+
+  pi.on("turn_start", () => {
+    if (askUserDebug()) usedAskUserThisTurn = false;
+  });
+
+  pi.on("tool_call", (event, _ctx) => {
+    if (askUserDebug() && event.toolName === "ask_user") usedAskUserThisTurn = true;
+  });
+
+  pi.on("turn_end", (event, _ctx) => {
+    if (!askUserDebug()) return;
+    const text = assistantText(event.message);
+    const diag = classifyTurn(text, usedAskUserThisTurn);
+    if (!diag.isQuestionRound) return;
+    const via = diag.usedAskUser ? "ask_user" : "plain text";
+    console.log(
+      `[pi-ask-user] turn ${event.turnIndex}: question round via ${via}` +
+        ` (wrotePlain=${diag.wrotePlainQuestions}, clean=${diag.handledCleanly})`,
+    );
   });
 }

@@ -1,4 +1,4 @@
-# Pi Ask User
+# pi-ask-user
 
 An interactive `ask_user` form tool for the [Pi coding agent](https://pi.dev/).
 
@@ -76,8 +76,16 @@ The top-level call accepts an optional `numbered` flag (default `false`):
 
 ## Wiring it into grilling skills
 
-`ask_user` ships `promptGuidelines` that tell the model to prefer the form over
-plain-text `Q1..QN`. It maps naturally onto [Matt Pocock's `grilling`
+`ask_user` ships strengthened `promptGuidelines` (since 0.2.0) that make the form
+**mandatory** in grilling / domain-modeling / design-interview question rounds:
+when a workflow presents question rounds as numbered plain-text blocks
+(`Q1..QN`, `❓`, `recommended answer`), the model must call `ask_user` instead of
+typing them out. The guidelines name the grilling family explicitly plus a
+generic "成轮提问 / design-interview" fallback, so no third-party skill edits
+are needed. See
+[`docs/adr/0001-ask-user-triggering-metadata-first.md`](../../docs/adr/0001-ask-user-triggering-metadata-first.md).
+
+It maps naturally onto [Matt Pocock's `grilling`
 skill](https://github.com/mattpocock/skills) format:
 
 | grilling skill | `ask_user` |
@@ -87,10 +95,20 @@ skill](https://github.com/mattpocock/skills) format:
 | `➡️ <recommended answer>` | `recommendation` hint (marked `★` on the matching option) |
 | free-form asks | `type: "text"` questions |
 
-To make a grilling skill deterministic, add one line to the skill:
+## Debugging trigger behavior
 
-> Present each round's frontier via the `ask_user` tool as a form. If the
-> `ask_user` tool is not available, fall back to numbered plain-text questions.
+Pass `--ask-user-debug` to log one line per turn recording whether a question
+round happened and whether it used `ask_user`:
+
+```bash
+pi --ask-user-debug
+```
+
+Example output: `[pi-ask-user] turn 3: question round via plain text
+(wrotePlain=true, clean=false)`. This feeds the escalation gate (ADR-0001): if
+repeated multi-scenario runs show most question rounds bypassing `ask_user`, the
+metadata-first approach is judged insufficient and per-turn injection is
+reconsidered.
 
 ## License
 

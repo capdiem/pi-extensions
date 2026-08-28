@@ -1,6 +1,6 @@
 {
   "name": "@capdiem/pi-ask-user",
-  "version": "0.1.3",
+  "version": "0.2.0",
   "private": true,
   "description": "An interactive ask_user form (Custom UI) for the Pi coding agent: turns grilling-skill questions into selectable options with recommended-answer hints — TUI full form, RPC sequential dialogs",
   "type": "module",
