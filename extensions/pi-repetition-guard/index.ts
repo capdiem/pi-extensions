@@ -1,9 +1,11 @@
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import {
   GUARD_STEER_MAX_RETRIES,
+  MAX_COMPACTION_RETRIES,
   RepetitionDetector,
   RetryBudget,
   ToolLoopTracker,
+  buildPostCompactSteer,
   buildSteer,
   buildToolLoopSteer,
   extractText,
@@ -24,8 +26,11 @@ import {
  *    on `tool_call`; intervened by blocking the repetitive call (block +
  *    terminate) and steering.
  *
- * Shared control: `/runaway on|off` (user-only), retry budget of 3 steers per
- * logical user turn (escalated wording 1→2→3, then give up).
+ * Shared control: `/runaway on|off` (user-only), retry budget of 2 steers per
+ * logical user turn (escalated wording 1→2). When the budget is exhausted we
+ * auto-compact the context and retry once more (`MAX_COMPACTION_RETRIES`), then
+ * give up — attacking the long-context degradation that feeds the loop. Still
+ * hard-capped; the guard itself can never loop forever.
  */
 export default function repetitionGuardExtension(pi: ExtensionAPI): void {
   const detector = new RepetitionDetector();
@@ -34,6 +39,8 @@ export default function repetitionGuardExtension(pi: ExtensionAPI): void {
   let enabled = true;
   let pendingSteer: string | undefined;
   let pendingToolSteer: string | undefined;
+  let pendingCompact = false;
+  let compactionsUsed = 0;
   let hardTriggered = false;
 
   const diag = (message: string): void => {
@@ -45,10 +52,43 @@ export default function repetitionGuardExtension(pi: ExtensionAPI): void {
     if (allowSteer) {
       pendingSteer = buildSteer(retryNum, sample);
       diag(`text runaway — aborting, will steer (retry ${retryNum}/${GUARD_STEER_MAX_RETRIES})`);
+    } else if (compactionsUsed < MAX_COMPACTION_RETRIES) {
+      pendingCompact = true;
+      diag("text runaway — aborting, will compact + continue");
     } else {
       diag("text runaway — aborting, retry budget exhausted (giving up)");
     }
     ctx.abort();
+  };
+
+  /**
+   * Fire the queued compact-and-continue at a run settle point (`message_end`
+   * for text loops, `agent_end` for tool loops) — same race-free discipline as
+   * the steer delivery. On completion the retry budget resets and a "continue"
+   * steer re-runs the task against the shrunk context. On failure we keep the
+   * existing give-up behavior.
+   */
+  const maybeFireCompact = (ctx: ExtensionContext): void => {
+    if (!pendingCompact) return;
+    pendingCompact = false;
+    if (compactionsUsed >= MAX_COMPACTION_RETRIES) {
+      diag("compaction budget exhausted — giving up");
+      return;
+    }
+    compactionsUsed += 1;
+    diag(`triggering auto-compact (${compactionsUsed}/${MAX_COMPACTION_RETRIES})`);
+    ctx.compact({
+      onComplete: () => {
+        budget.reset();
+        const steer = buildPostCompactSteer();
+        budget.recordSentSteer(steer);
+        diag("compaction complete — sending continue steer");
+        pi.sendUserMessage(steer, { deliverAs: "steer" });
+      },
+      onError: (error) => {
+        diag(`compaction failed (${error.message}) — giving up`);
+      },
+    });
   };
 
   /** Track per-message state and the retry budget across logical turns. */
@@ -60,6 +100,7 @@ export default function repetitionGuardExtension(pi: ExtensionAPI): void {
     } else if (role === "user") {
       const text = contentText(event.message.content);
       if (budget.onUserMessage(text)) {
+        compactionsUsed = 0;
         diag(`new user turn — budget reset to ${GUARD_STEER_MAX_RETRIES}`);
       }
     }
@@ -95,6 +136,9 @@ export default function repetitionGuardExtension(pi: ExtensionAPI): void {
         `tool-call loop — blocking ${event.toolName} (${inputKey.slice(0, 60)}), will steer ` +
           `(retry ${retryNum}/${GUARD_STEER_MAX_RETRIES})`,
       );
+    } else if (compactionsUsed < MAX_COMPACTION_RETRIES) {
+      pendingCompact = true;
+      diag("tool-call loop — blocking, will compact + continue");
     } else {
       diag("tool-call loop — budget exhausted, blocking without steer");
     }
@@ -106,9 +150,10 @@ export default function repetitionGuardExtension(pi: ExtensionAPI): void {
   });
 
   // Send the text steer once the aborted message is finalized (race-free).
-  pi.on("message_end", (event) => {
-    if (!pendingSteer) return;
+  pi.on("message_end", (event, ctx) => {
     if (event.message.role !== "assistant") return;
+    maybeFireCompact(ctx);
+    if (!pendingSteer) return;
     const steer = pendingSteer;
     pendingSteer = undefined;
     budget.recordSentSteer(steer);
@@ -117,7 +162,8 @@ export default function repetitionGuardExtension(pi: ExtensionAPI): void {
   });
 
   // Send the tool-loop steer after the (terminated) run settles.
-  pi.on("agent_end", () => {
+  pi.on("agent_end", (event, ctx) => {
+    maybeFireCompact(ctx);
     if (!pendingToolSteer) return;
     const steer = pendingToolSteer;
     pendingToolSteer = undefined;

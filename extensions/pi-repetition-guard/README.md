@@ -58,9 +58,33 @@ the final `text` stream (whichever hits the threshold first).
   next action without doing it" (e.g. repeating "let me check git status"
   without ever committing), so the steer tells it to stop describing and do the
   operation.
-- **Retry budget**: max **3** steer retries per logical user turn, with
-  escalating wording (1 → 2 → 3) and a clear "give up or state the blocker"
-  fallback on the final retry. Still hard-capped — no infinite loop.
+- **Retry budget**: max **2** steer retries per logical user turn, with
+  escalating wording (1 → 2) and a clear "give up or state the blocker"
+  fallback on the final retry.
+- **Auto-compact and continue**: when the retry budget is exhausted (still
+  looping after 2 steers), the guard compacts the context and retries **once**
+  more (`MAX_COMPACTION_RETRIES = 1`) with a fresh budget, then gives up. This
+  attacks the long-context degradation that feeds the loop (a model stuck in a
+  loop is usually also drowning in its own garbage; shrinking the context gives
+  it a clean shot at the original task). Still hard-capped — no infinite loop.
+
+> **Why compact instead of just giving up (measured root cause):** the infinite
+> loops we observe are not a sampling-level "repetition bug" — they are a
+> **long-context tracking failure**. In practice the loop appears almost
+> exclusively on **deepseek-flash** (a fast/cheap tier model with weaker
+> long-context coherence) and mostly once the context has grown to roughly
+> **30% of the 1M window (~300K tokens)**. At that size the model's attention
+> dilutes past its trained effective range: it loses "what did I just do" and
+> starts re-issuing the same action or re-stating the same intent. Two
+> consequences matter for the guard:
+> 1. The loop is *context-driven*, so shrinking the context is the direct
+>    countermeasure — compaction puts the model back in the regime where it can
+>    converge, which is why we retry after compacting rather than giving up.
+> 2. The guard's own abort + steer *appends* the junk and the steer to the
+>    context (no cleanup, ADR 0002), which feeds the very degradation that
+>    caused the loop. Auto-compacting breaks that self-reinforcing feedback.
+>    (This is also the argument for *not* raising `MAX_COMPACTION_RETRIES`
+>    casually: every extra cycle costs a compaction and loses detail.)
 - **User-only control**: `/runaway on|off` slash command, default **on**. The
   guard cannot be disabled by the LLM itself (there is no LLM-callable toggle).
 
@@ -96,8 +120,9 @@ Nothing to configure — it is on by default and runs silently in the background
   per the settled design; see ADR 0002.)
 - **Tool-call loop detected:** the repetitive tool call is blocked (a
   "Repetition guard: tool-call loop" reason), the run terminates, and a steer
-  naming the tool + repeated input is sent. If it loops again, later steers
-  escalate (2nd, 3rd); after the final retry it stops.
+  naming the tool + repeated input is sent. If it loops again, the second steer
+  escalates; after the final retry, if it still loops, the context is
+  auto-compacted and the task retried once more before giving up.
 - **Disable / re-enable:**
   ```
   /runaway off
@@ -109,7 +134,14 @@ Nothing to configure — it is on by default and runs silently in the background
 ## Behavior details
 
 - **Budget reset:** a new logical user turn (a user message that is *not* our
-  own steer) resets the retry budget to 2.
+  own steer) resets the retry budget to 2 (and the per-turn auto-compact counter).
+- **Auto-compact-and-continue flow:** after the 2nd steer fails, the guard queues
+  a compaction, fires it at the next settle point (`message_end` for text loops,
+  `agent_end` for tool loops), and on completion resets the retry budget and
+  sends a "continue" steer telling the model to finish the original task from
+  the compacted context. If compaction fails, the guard gives up (no worse than
+  before). Per turn this happens at most `MAX_COMPACTION_RETRIES` times (1), so
+  the guard remains hard-capped — it can never loop forever.
 - **Scope:** only the current assistant message's own text is compared — the
   detector does not compare against the user's message or prior assistant
   messages, so restating the user's words never false-triggers.

@@ -2,12 +2,14 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   GUARD_STEER_MAX_RETRIES,
+  MAX_COMPACTION_RETRIES,
   NEAR_DUP_HARD_FRACTION,
   RepetitionDetector,
   RetryBudget,
   SAMPLE_MAX_CHARS,
   ToolLoopTracker,
   TOOL_LOOP_MAX_REPEATS,
+  buildPostCompactSteer,
   buildSteer,
   buildToolLoopSteer,
   extractText,
@@ -186,7 +188,16 @@ test("buildSteer is action-oriented, carries the sample on retry 1, escalates on
   assert.match(third, /第 3 次/);
   assert.match(third, /无法完成/, "final retry must offer a clear fallback");
   assert.equal(third.includes("whatever"), false);
-  assert.equal(GUARD_STEER_MAX_RETRIES, 3);
+  assert.equal(GUARD_STEER_MAX_RETRIES, 2);
+});
+
+test("buildPostCompactSteer redirects to finishing the task on compacted context", () => {
+  const steer = buildPostCompactSteer();
+  assert.match(steer, /\[自动护栏\]/);
+  assert.match(steer, /压缩/);
+  assert.match(steer, /直接完成原始任务目标/, "must tell the model to finish the original task");
+  assert.match(steer, /不要再重复尝试相同操作/, "must forbid re-looping the same operation");
+  assert.equal(MAX_COMPACTION_RETRIES, 1, "one compact-and-continue per turn keeps the guard bounded");
 });
 
 test("tool-loop tracker fires on the same tool+input repeated within a window", () => {

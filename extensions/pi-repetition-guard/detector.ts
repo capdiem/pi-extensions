@@ -2,7 +2,11 @@
 // so it is unit-testable in isolation (mirrors pi-todo's state.ts split).
 
 // ── Tunable defaults (fixed, not user-configurable) ─────────────────────────
-export const GUARD_STEER_MAX_RETRIES = 3;
+export const GUARD_STEER_MAX_RETRIES = 2;
+/** Max auto-compact-and-continue cycles per logical user turn. After the retry
+ *  budget is exhausted we compact the context and retry once more (cap=1), then
+ *  give up. Hard-capped so the guard itself can never loop forever. */
+export const MAX_COMPACTION_RETRIES = 1;
 /** Rescan cadence — we re-scan only after this many new chars accumulate. */
 const CHECKPOINT_CHARS = 200;
 /** Smallest loop unit (chars) we treat as a runaway tape-loop. */
@@ -267,7 +271,7 @@ export class ToolLoopTracker {
 
 /** Build the tool-loop steer message; retryNum is 1-based (1 = first retry).
  * Action-oriented: stop re-invoking, finish the goal from existing info.
- * Escalates over 3 retries. */
+ * Escalates per retry number. */
 export function buildToolLoopSteer(retryNum: number, toolName: string, inputKey: string): string {
   if (retryNum >= 3) {
     return (
@@ -350,8 +354,8 @@ export class RetryBudget {
  * Action-oriented wording (v4): the real-world loop this guard catches is often
  * "rehearsing the next action without doing it" (e.g. repeating "let me check
  * git status" without ever committing). Telling a stuck model to "give a final
- * answer" does not break that — it must be told to EXECUTE. Escalates over 3
- * retries. */
+ * answer" does not break that — it must be told to EXECUTE. Escalates per
+ * retry number. */
 export function buildSteer(retryNum: number, sample: string): string {
   if (retryNum >= 3) {
     return (
@@ -370,5 +374,16 @@ export function buildSteer(retryNum: number, sample: string): string {
     "复述，直接执行你要做的操作并给出结果，不要描述你将要做什么。\n\n" +
     "刚才重复的片段（节选）：\n" +
     (sample || "（无样例）")
+  );
+}
+
+/** Build the post-compaction "continue" steer. Sent after the retry budget was
+ *  exhausted and the context was auto-compacted: the conversation was shrunk,
+ *  so the model gets a clean shot at finishing the original task instead of
+ *  re-reading its own garbage. Action-oriented, same philosophy as buildSteer. */
+export function buildPostCompactSteer(): string {
+  return (
+    "[自动护栏] 前几次尝试陷入循环，已自动压缩上下文。请基于当前压缩后的上下文，直接完成原始任务目标" +
+    "并给出最终结果；若仍无法完成，请明确说明卡在哪里，不要再重复尝试相同操作。"
   );
 }
