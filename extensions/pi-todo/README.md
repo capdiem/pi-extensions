@@ -5,7 +5,8 @@ The model writes the complete task plan in one call instead of issuing one
 `create` call per task.
 
 It is deliberately small — only the essential plan-maintenance core, with no
-dependencies, reminders, settings menus, or collapse/expand. The live plan
+dependencies or settings menus, no collapse/expand, and exactly one lightweight
+reminder (a run-end reconcile nudge, see [Features](#features)). The live plan
 renders as a read-only widget above Pi's input box, and when hosted by
 [pi-agent-desktop](https://github.com/abcwyc/pi-agent-desktop) it also appears
 in the desktop's **left-nav sidebar** todo panel with zero extra configuration
@@ -25,6 +26,14 @@ in the desktop's **left-nav sidebar** todo panel with zero extra configuration
 - State persists in tool-result details and survives `/reload` and `/tree`
 - A read-only widget above Pi's input box using markdown-style glyphs
   (`[ ]` pending, `[-]` in_progress, `[x]` completed); no collapse/expand
+- **Run-end reconcile nudge**: when a turn settles (`agent_settled`) while tasks
+  are still `in_progress`, the extension sends the agent one steer reminding it
+  to mark them `completed` if the work is actually done. This catches the
+  "forgot to reconcile the plan at the end of the turn" failure without the
+  user having to notice a stale plan. It fires at most once per logical user
+  turn, is skipped while the plan has no `in_progress` tasks, and never loops:
+  the nudge's own delivery is recognized by content and is not treated as a new
+  user turn.
 - When hosted by pi-agent-desktop, the live plan also renders in the desktop's
   **left-nav sidebar** todo panel (the desktop-owned `pi-agent-desktop:todo`
   widget extension point) — no extra configuration needed

@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  buildTodoNudge,
   cloneTodoState,
   createEmptyTodoState,
   formatChange,
+  hasInProgress,
   isValidTodoState,
   replayTodoState,
   type TodoState,
@@ -229,4 +231,30 @@ test("todo isValidTodoState accepts valid state and rejects malformed state", ()
     false,
     "multiple in_progress tasks are invalid persisted state",
   );
+});
+
+test("todo hasInProgress detects dangling in_progress tasks", () => {
+  const withActive = writeTodo(createEmptyTodoState(), { tasks: initialPlan });
+  assert.equal(hasInProgress(withActive), true, "in_progress task present");
+
+  const allDone = writeTodo(asState(withActive), {
+    tasks: [
+      { key: "inspect", status: "completed" },
+      { key: "implement", status: "completed" },
+      { key: "verify", status: "completed" },
+    ],
+  });
+  assert.equal(hasInProgress(allDone), false, "no in_progress tasks");
+
+  assert.equal(hasInProgress(createEmptyTodoState()), false, "empty plan has none");
+});
+
+test("todo buildTodoNudge is a fixed, action-oriented, content-matchable steer", () => {
+  const a = buildTodoNudge();
+  const b = buildTodoNudge();
+  assert.equal(a, b, "fixed text so the agent's own delivery can be recognized by content");
+  assert.match(a, /\[pi-todo\]/);
+  assert.match(a, /in_progress/);
+  assert.match(a, /completed/, "must tell the agent to mark done tasks completed");
+  assert.match(a, /不要执行其他操作/, "must not trigger extra work");
 });

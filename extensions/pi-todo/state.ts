@@ -229,3 +229,25 @@ export function formatChange(state: TodoState): string {
   );
   return `Todo plan version ${state.version}:\n${lines.join("\n")}`;
 }
+
+/** True when any task is currently in_progress. Used by the reconcile nudge to
+ *  decide whether a run-end reminder is warranted. */
+export function hasInProgress(state: TodoState): boolean {
+  return state.tasks.some((task) => task.status === "in_progress");
+}
+
+/**
+ * Build the run-end reconcile nudge (Plan B). Sent from `agent_settled` when a
+ * turn settled while tasks are still in_progress, so the agent is reminded to
+ * mark them completed if the work is actually done. The fixed text doubles as
+ * the identity for recognizing our own steer's user-message delivery (content
+ * match, same pattern as repetition-guard's RetryBudget) — so the delivery is
+ * NOT treated as a new user turn and the nudge can't re-fire in a loop.
+ */
+export function buildTodoNudge(): string {
+  return (
+    "[pi-todo] 收尾提醒：本回合已结束，但仍有任务处于 in_progress。若这些任务实际已完成，" +
+    "请立即调用 todo 把它们标记为 completed；若确实仍在进行中，请简短说明并保持现状。" +
+    "不要执行其他操作。"
+  );
+}
