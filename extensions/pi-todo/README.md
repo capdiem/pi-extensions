@@ -26,14 +26,14 @@ in the desktop's **left-nav sidebar** todo panel with zero extra configuration
 - State persists in tool-result details and survives `/reload` and `/tree`
 - A read-only widget above Pi's input box using markdown-style glyphs
   (`[ ]` pending, `[-]` in_progress, `[x]` completed); no collapse/expand
-- **Run-end reconcile nudge**: when a turn settles (`agent_settled`) while tasks
-  are still `in_progress`, the extension sends the agent one steer reminding it
-  to mark them `completed` if the work is actually done. This catches the
-  "forgot to reconcile the plan at the end of the turn" failure without the
-  user having to notice a stale plan. It fires at most once per logical user
-  turn, is skipped while the plan has no `in_progress` tasks, and never loops:
-  the nudge's own delivery is recognized by content and is not treated as a new
-  user turn.
+- **Run-end reconcile reminder (invisible)**: when a turn settles
+  (`agent_settled`) while tasks are still `in_progress`, the extension records a
+  reminder and injects it into the **system prompt of the next turn** via
+  `before_agent_start`. The model is reminded to mark them `completed` if the
+  work is actually done — with **no visible chat message, no extra agent run,
+  and no toggle needed**. It fires at most once per turn, is skipped while the
+  plan has no `in_progress` tasks, and cannot loop (there is no steer message to
+  loop on).
 - When hosted by pi-agent-desktop, the live plan also renders in the desktop's
   **left-nav sidebar** todo panel (the desktop-owned `pi-agent-desktop:todo`
   widget extension point) — no extra configuration needed

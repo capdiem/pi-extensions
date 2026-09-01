@@ -237,17 +237,17 @@ export function hasInProgress(state: TodoState): boolean {
 }
 
 /**
- * Build the run-end reconcile nudge (Plan B). Sent from `agent_settled` when a
- * turn settled while tasks are still in_progress, so the agent is reminded to
- * mark them completed if the work is actually done. The fixed text doubles as
- * the identity for recognizing our own steer's user-message delivery (content
- * match, same pattern as repetition-guard's RetryBudget) — so the delivery is
- * NOT treated as a new user turn and the nudge can't re-fire in a loop.
+ * Build the reconcile reminder injected into the next turn's system prompt
+ * (via `before_agent_start`). Unlike a steer user message, this is invisible to
+ * the user — it only lives in the system prompt the model sees on the next
+ * turn. Lists the tasks still in_progress so the model can reconcile them.
  */
-export function buildTodoNudge(): string {
+export function buildTodoNudge(inProgress: TodoTask[]): string {
+  const lines = inProgress.map((task) => `- ${task.key}: ${task.subject}`).join("\n");
   return (
-    "[pi-todo] 收尾提醒：本回合已结束，但仍有任务处于 in_progress。若这些任务实际已完成，" +
-    "请立即调用 todo 把它们标记为 completed；若确实仍在进行中，请简短说明并保持现状。" +
-    "不要执行其他操作。"
+    "[pi-todo 收尾提醒] 上个回合结束时，以下任务仍处于 in_progress：\n" +
+    (lines || "（无）") +
+    "\n若这些任务实际已完成，请在本回合开始时调用 todo 把它们标记为 completed；" +
+    "若确实仍在进行中，请保持现状。"
   );
 }

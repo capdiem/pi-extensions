@@ -147,13 +147,11 @@ export default function todoMiniExtension(pi: ExtensionAPI): void {
   let uiContext: ExtensionContext | undefined;
   let widgetRegistered = false;
   let widgetTui: TUI | undefined;
-  // Plan-B reconcile nudge state (run-end reminder). `nudgedThisTurn` is reset
-  // only by a REAL user turn (a user message that is not our own nudge), so our
-  // nudge's own delivery can never re-trigger it — no nudge loop.
-  let nudgedThisTurn = false;
-  const sentNudges = new Set<string>();
-
-  const nudgeText = (): string => buildTodoNudge();
+  // Reconcile reminder state. Set at `agent_settled` when tasks are still
+  // in_progress, consumed at the next `before_agent_start` by injecting the
+  // reminder into the system prompt — invisible to the user (no chat message,
+  // no extra agent run), yet the model sees it when the next turn starts.
+  let pendingReconcile = "";
 
   const clearWidget = (): void => {
     if (widgetRegistered && uiContext?.hasUI) {
@@ -294,43 +292,21 @@ export default function todoMiniExtension(pi: ExtensionAPI): void {
     uiContext = undefined;
   });
 
-  // Plan B: run-end reconcile nudge. `agent_settled` fires exactly once per turn
-  // (after any auto-retries/compactions/follow-ups), which is the point where Pi
-  // confirms the agent will not continue running automatically. If tasks are
-  // still in_progress and we have not nudged this logical turn, send one steer
-  // reminding the agent to mark them completed if the work is actually done.
+  // Reconcile reminder. At turn settle, if any task is still in_progress, record
+  // a reminder to inject into the NEXT turn's system prompt — no visible message,
+  // no extra agent run, and no self-loop (there is no steer to loop on).
   pi.on("agent_settled", () => {
-    if (nudgedThisTurn || !hasInProgress(state)) return;
-    nudgedThisTurn = true;
-    const text = nudgeText();
-    sentNudges.add(text);
-    pi.sendUserMessage(text, { deliverAs: "steer" });
+    if (!hasInProgress(state)) return;
+    const inProgress = state.tasks.filter((task) => task.status === "in_progress");
+    pendingReconcile = buildTodoNudge(inProgress);
   });
 
-  // Reset the nudge budget on a REAL user turn. Our own nudge arrives back as a
-  // user message with the exact text we sent — recognizing it by content (same
-  // pattern as repetition-guard's RetryBudget) means the nudge's own agent run
-  // is not treated as a new user turn, so it can't fire repeatedly in a loop.
-  pi.on("message_start", (event) => {
-    if (event.message?.role !== "user") return;
-    const text = contentText(event.message.content);
-    if (text && sentNudges.has(text)) {
-      sentNudges.delete(text);
-      return;
-    }
-    nudgedThisTurn = false;
+  // Inject the reminder into the system prompt of the next turn. Invisible to
+  // the user; chained correctly by appending to the current system prompt.
+  pi.on("before_agent_start", (event) => {
+    if (!pendingReconcile) return;
+    const reminder = pendingReconcile;
+    pendingReconcile = "";
+    return { systemPrompt: event.systemPrompt + "\n\n" + reminder };
   });
-}
-
-/** Concatenate the text of a user message, for matching against our nudge. */
-function contentText(content: unknown): string {
-  if (!Array.isArray(content)) return "";
-  let text = "";
-  for (const item of content) {
-    if (item && typeof item === "object") {
-      const t = (item as { text?: unknown }).text;
-      if (typeof t === "string") text += t;
-    }
-  }
-  return text;
 }

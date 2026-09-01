@@ -249,12 +249,15 @@ test("todo hasInProgress detects dangling in_progress tasks", () => {
   assert.equal(hasInProgress(createEmptyTodoState()), false, "empty plan has none");
 });
 
-test("todo buildTodoNudge is a fixed, action-oriented, content-matchable steer", () => {
-  const a = buildTodoNudge();
-  const b = buildTodoNudge();
-  assert.equal(a, b, "fixed text so the agent's own delivery can be recognized by content");
-  assert.match(a, /\[pi-todo\]/);
-  assert.match(a, /in_progress/);
-  assert.match(a, /completed/, "must tell the agent to mark done tasks completed");
-  assert.match(a, /不要执行其他操作/, "must not trigger extra work");
+test("todo buildTodoNudge lists in_progress tasks and redirects to reconcile", () => {
+  const withActive = writeTodo(createEmptyTodoState(), { tasks: initialPlan });
+  const inProgress = withActive.tasks.filter((task) => task.status === "in_progress");
+  const nudge = buildTodoNudge(inProgress);
+  assert.match(nudge, /\[pi-todo 收尾提醒\]/);
+  assert.match(nudge, /inspect/, "must list the in_progress task key");
+  assert.match(nudge, /completed/, "must tell the agent to mark done tasks completed");
+  assert.match(nudge, /保持现状/, "must allow leaving genuinely in-progress tasks");
+
+  const empty = buildTodoNudge([]);
+  assert.match(empty, /（无）/, "empty in_progress list renders a placeholder");
 });
