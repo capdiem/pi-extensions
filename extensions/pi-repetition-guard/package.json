@@ -1,6 +1,6 @@
 {
   "name": "@capdiem/pi-repetition-guard",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "description": "A repetition-loop guard for the Pi coding agent: detects thinking-runaway / 万字复读 (the model repeating the same text in a loop) in streamed output via message_update, then aborts and re-steers the model with a corrective steer message",
   "type": "module",
